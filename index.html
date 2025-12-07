@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Messenger Chat</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+*{
+  box-sizing:border-box;
+}
+
+body {
+  margin:0;
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background: linear-gradient(135deg,#0f0c29,#302b63,#24243e);
+  font-family:'Inter',sans-serif;
+  color:white;
+  padding:10px;
+}
+
+/* Main Box */
+.box {
+  width:100%;
+  max-width:420px;
+  height:95vh;
+  max-height:700px;
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(12px);
+  border-radius:20px;
+  box-shadow:0 0 40px rgba(0,0,0,.4);
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+}
+
+/* Inputs and buttons */
+input, button {
+  padding:12px;
+  border-radius:12px;
+  border:none;
+  outline:none;
+  margin:6px 0;
+  font-size:15px;
+}
+
+input {
+  background: rgba(255,255,255,0.14);
+  color:#fff;
+}
+
+button {
+  background: linear-gradient(135deg,#00f2fe,#4facfe);
+  font-weight:600;
+  cursor:pointer;
+  color:#000;
+  transition:all .2s ease;
+}
+
+button:active {
+  transform:scale(0.97);
+}
+
+/* Chat area */
+.chat {
+  flex:1;
+  overflow-y:auto;
+  margin:10px 0;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  scroll-behavior:smooth;
+}
+
+/* Messages */
+.msg {
+  max-width:80%;
+  padding:10px 14px;
+  border-radius:16px;
+  word-wrap:break-word;
+  animation:pop .15s ease;
+  font-size:14px;
+}
+
+@keyframes pop{
+  from{opacity:0;transform:translateY(8px);}
+  to{opacity:1;transform:translateY(0);}
+}
+
+.left {
+  align-self:flex-start;
+  background:rgba(255,255,255,.2);
+}
+
+.right {
+  align-self:flex-end;
+  background:linear-gradient(135deg,#43e97b,#38f9d7);
+  color:black;
+}
+
+.topbar {
+  text-align:center;
+  font-weight:600;
+  margin-bottom:6px;
+}
+
+.small {
+  font-size:12px;
+  opacity:.8;
+  text-align:center;
+  word-wrap:break-word;
+}
+
+.row {
+  display:flex;
+  gap:6px;
+  align-items:center;
+}
+
+.hidden { display:none }
+
+/* Popup */
+.popup {
+  position:fixed;
+  background:#000000d0;
+  padding:20px;
+  border-radius:15px;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  display:none;
+  text-align:center;
+  width:90%;
+  max-width:320px;
+}
+
+/* Mobile tweaks */
+@media (max-width:480px){
+  .box {
+    height:100vh;
+    border-radius:0;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Username Screen -->
+<div class="box" id="nameScreen">
+  <div class="topbar">Your Name</div>
+  <input id="username" placeholder="Enter your name">
+  <button onclick="next()">Continue</button>
+</div>
+
+<!-- Room Screen -->
+<div class="box hidden" id="roomScreen">
+  <div class="topbar">Join or Create Room</div>
+  <input id="roomCode" placeholder="Room Code">
+  <button onclick="createRoom()">Create Room</button>
+  <button onclick="joinRoom()">Join Room</button>
+  <div id="error" class="small" style="color:#ff7675"></div>
+</div>
+
+<!-- Chat Screen -->
+<div class="box hidden" id="chatScreen">
+  <div class="topbar">Chat Room</div>
+  <div class="small" id="users"></div>
+  <div class="chat" id="messages"></div>
+
+  <div class="row">
+    <input id="text" placeholder="Type message..." style="flex:1">
+    <button onclick="send()">➤</button>
+  </div>
+</div>
+
+<!-- Invite Popup -->
+<div class="popup" id="popup">
+  <div>Room Code</div>
+  <h2 id="showCode" style="letter-spacing:2px;"></h2>
+  <button onclick="copyCode()">Copy</button>
+  <button onclick="closePopup()">Close</button>
+</div>
+
+<script>
+let ws, username, room;
+
+function next(){
+  username = document.getElementById("username").value.trim();
+  if(!username) return alert("Enter name");
+
+  nameScreen.classList.add("hidden");
+  roomScreen.classList.remove("hidden");
+}
+
+function createRoom(){
+  room = Math.random().toString(36).substr(2,6).toUpperCase();
+  connect("create");
+
+  showCode.innerText = room;
+  popup.style.display="block";
+}
+
+function joinRoom(){
+  room = roomCode.value.trim().toUpperCase();
+  if(!room) return;
+  connect("join");
+}
+
+function connect(type){
+  ws = new WebSocket("ws://localhost:8080");
+
+  ws.onopen = () => {
+    ws.send(JSON.stringify({type, room, username}));
+  };
+
+  ws.onmessage = (e) => {
+    const d = JSON.parse(e.data);
+
+    if(d.type==="error") {
+      error.innerText=d.text;
+    }
+
+    if(d.type==="created" || d.type==="joined"){
+      roomScreen.classList.add("hidden");
+      chatScreen.classList.remove("hidden");
+    }
+
+    if(d.type==="users"){
+      users.innerText = "Online: " + d.users.join(", ");
+    }
+
+    if(d.type==="message"){
+      addMessage(d.message);
+    }
+
+    if(d.type==="delete"){
+      const el=document.querySelector(`[data-id='${d.id}']`);
+      if(el) el.remove();
+    }
+  };
+}
+
+function addMessage(m){
+  const div=document.createElement("div");
+  div.className="msg " + (m.sender===username ? "right" : "left");
+  div.dataset.id=m.id;
+  div.innerHTML=`<b>${m.sender}</b><br>${m.text}`;
+  messages.appendChild(div);
+  messages.scrollTop=messages.scrollHeight;
+
+  setTimeout(()=>div.remove(),60000);
+}
+
+function send(){
+  const t=text.value.trim();
+  if(!t) return;
+  ws.send(JSON.stringify({type:"message", text:t}));
+  text.value="";
+}
+
+function copyCode(){
+  navigator.clipboard.writeText(room);
+  alert("Room code copied!");
+}
+
+function closePopup(){
+  popup.style.display="none";
+}
+</script>
+
+</body>
+</html>
