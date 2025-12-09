@@ -218,7 +218,7 @@ function joinRoom(){
 
 /* ======= WebSocket & message handling ======= */
 function connect(type){
-  ws = new WebSocket("ws://localhost:8080");
+  ws = new WebSocket("wss://chart-app-5qsz.onrender.com");
 
   ws.onopen = () => {
     ws.send(JSON.stringify({ type, room, username }));
@@ -611,3 +611,4 @@ const nameScreen = el("nameScreen"), roomScreen = el("roomScreen"), chatScreen =
 </script>
 </body>
 </html>
+
