@@ -218,11 +218,7 @@ function joinRoom(){
 
 /* ======= WebSocket & message handling ======= */
 function connect(type){
-  ws = new WebSocket(
-  location.protocol === "https:"
-    ? "wss://" + location.host
-    : "ws://" + location.host
-);
+ws = new WebSocket("wss://" + location.host);
 
 
   ws.onopen = () => {
@@ -616,5 +612,6 @@ const nameScreen = el("nameScreen"), roomScreen = el("roomScreen"), chatScreen =
 </script>
 </body>
 </html>
+
 
 
