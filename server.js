@@ -1,22 +1,17 @@
-const WebSocket = require("ws");
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const WebSocket = require("ws");
 
 const PORT = process.env.PORT || 8080;
 
-// Create normal web server
+// Serve files
 const server = http.createServer((req, res) => {
   let filePath = "./index.html";
-
-  if (req.url !== "/") {
-    filePath = "." + req.url;
-  }
+  if (req.url !== "/") filePath = "." + req.url;
 
   const ext = path.extname(filePath);
-
   let contentType = "text/html";
-
   if (ext === ".js") contentType = "text/javascript";
   if (ext === ".css") contentType = "text/css";
 
@@ -31,93 +26,107 @@ const server = http.createServer((req, res) => {
   });
 });
 
-// Attach WebSocket to same server
-const wss = new WebSocket.Server({ server });
+// IMPORTANT: use `server` (not custom port) for WebSocket on Render
+const wss = new WebSocket.Server({ noServer: true });
 
+// room storage
 const rooms = {};
 
+// broadcast helper
 function broadcast(room, data) {
   if (!rooms[room]) return;
-  rooms[room].forEach(client => {
-    if (client.ws.readyState === WebSocket.OPEN) {
-      client.ws.send(JSON.stringify(data));
-    }
-  });
+  const msg = JSON.stringify(data);
+  for (const client of rooms[room]) {
+    if (client.readyState === WebSocket.OPEN) client.send(msg);
+  }
 }
 
+// WebSocket upgrade (critical for Render)
+server.on("upgrade", (req, socket, head) => {
+  wss.handleUpgrade(req, socket, head, (ws) => {
+    wss.emit("connection", ws, req);
+  });
+});
+
 wss.on("connection", (ws) => {
-  let currentRoom = null;
-  let username = null;
+  ws.room = null;
+  ws.username = null;
 
   ws.on("message", (msg) => {
-    const data = JSON.parse(msg);
+    let data = {};
+    try { data = JSON.parse(msg); } catch { return; }
 
     if (data.type === "create") {
-      currentRoom = data.room;
-      username = data.username;
-      rooms[currentRoom] = rooms[currentRoom] || [];
-      rooms[currentRoom].push({ ws, username });
+      const room = data.room;
+      ws.room = room;
+      ws.username = data.username;
 
-      ws.send(JSON.stringify({ type: "created", room: currentRoom }));
+      if (!rooms[room]) rooms[room] = new Set();
+      rooms[room].add(ws);
 
-      broadcast(currentRoom, {
-        type: "users",
-        users: rooms[currentRoom].map(u => u.username)
-      });
+      ws.send(JSON.stringify({ type: "created" }));
+      broadcast(room, { type: "users", users: [...rooms[room]].map(u => u.username) });
     }
 
     if (data.type === "join") {
-      if (!rooms[data.room]) {
+      const room = data.room;
+      if (!rooms[room]) {
         ws.send(JSON.stringify({ type: "error", text: "Room not found" }));
         return;
       }
 
-      currentRoom = data.room;
-      username = data.username;
-      rooms[currentRoom].push({ ws, username });
+      ws.room = room;
+      ws.username = data.username;
+      rooms[room].add(ws);
 
-      ws.send(JSON.stringify({ type: "joined", room: currentRoom }));
+      ws.send(JSON.stringify({ type: "joined" }));
+      broadcast(room, { type: "users", users: [...rooms[room]].map(u => u.username) });
+    }
 
-      broadcast(currentRoom, {
-        type: "users",
-        users: rooms[currentRoom].map(u => u.username)
+    if (data.type === "message") {
+      broadcast(ws.room, {
+        type: "message",
+        message: {
+          id: Date.now() + "" + Math.random(),
+          sender: ws.username,
+          text: data.text
+        }
       });
     }
 
-    if (data.type === "message" && currentRoom) {
-      const message = {
-        id: Math.random().toString(36),
-        sender: username,
-        text: data.text
-      };
-
-      broadcast(currentRoom, { type: "message", message });
-
-      setTimeout(() => {
-        broadcast(currentRoom, { type: "delete", id: message.id });
-      }, 60000);
+    if (data.type === "file") {
+      broadcast(ws.room, {
+        type: "file",
+        message: {
+          id: Date.now() + "" + Math.random(),
+          sender: ws.username,
+          name: data.name,
+          data: data.data,
+          filetype: data.filetype
+        }
+      });
     }
 
-    if (data.type === "file" && currentRoom) {
-      const fileMsg = {
-        sender: username,
-        name: data.name,
-        data: data.data
-      };
-      broadcast(currentRoom, { type: "file", message: fileMsg });
+    if (data.type === "clear") {
+      broadcast(ws.room, { type: "clear" });
     }
+
+    // WebRTC signaling
+    if (data.type === "call-request") {
+      broadcast(ws.room, { type: "call-request", from: ws.username, video: data.video });
+    }
+    if (data.type === "offer") broadcast(ws.room, { type: "offer", offer: data.offer, from: ws.username });
+    if (data.type === "answer") broadcast(ws.room, { type: "answer", answer: data.answer });
+    if (data.type === "candidate") broadcast(ws.room, { type: "candidate", candidate: data.candidate });
+    if (data.type === "call-end") broadcast(ws.room, { type: "call-end" });
   });
 
   ws.on("close", () => {
-    if (!currentRoom) return;
-    rooms[currentRoom] = rooms[currentRoom].filter(c => c.ws !== ws);
-    broadcast(currentRoom, {
-      type: "users",
-      users: rooms[currentRoom].map(u => u.username)
-    });
+    if (!ws.room || !rooms[ws.room]) return;
+    rooms[ws.room].delete(ws);
+    broadcast(ws.room, { type: "users", users: [...rooms[ws.room]].map(u => u.username) });
   });
 });
 
-server.listen(PORT, () => {
-  console.log("✅ Server running on port " + PORT);
-});
+// Start server
+server.listen(PORT, () => console.log("Server running on " + PORT));
