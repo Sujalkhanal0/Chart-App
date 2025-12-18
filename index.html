@@ -1,617 +1,214 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Messenger Chat</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-<style>
-/* --- Visuals unchanged from your preferred UI --- */
-body{
-  margin:0;
-  min-height:100vh;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);
-  font-family:'Inter',sans-serif;
-  color:white;
-}
+    <meta charset="UTF-8">
+    <title>Jungle Chat 3D - Sujal Khanal Edition</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; min-height: 100vh; display: flex; justify-content: center; align-items: center; background: #76ba1b; font-family: 'Fredoka One', cursive; color: #444; overflow: hidden; }
+        #canvas-container { position: fixed; inset: 0; z-index: -1; }
+        
+        /* ORIGINAL BOX DESIGN */
+        .box { width: 420px; max-width: 95%; background: rgba(255, 255, 255, 0.95); border: 4px solid #2d5a27; border-radius: 30px; box-shadow: 8px 8px 0px #1e3d1a; padding: 25px; display: flex; flex-direction: column; height: 80vh; justify-content: space-between; position: relative; z-index: 10; }
+        
+        .char-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 15px 0; }
+        .char-option { font-size: 30px; padding: 10px; border: 3px solid #eee; border-radius: 15px; cursor: pointer; text-align: center; transition: 0.2s; background: white; }
+        .selected { background: #FFD93D; border: 3px solid #000; }
+        
+        input, button { border: 3px solid #2d5a27; padding: 12px; border-radius: 12px; font-family: inherit; font-size: 16px; }
+        button { background: #76ba1b; color: white; cursor: pointer; }
+        
+        .chat { flex: 1; overflow-y: auto; margin: 15px 0; display: flex; flex-direction: column; gap: 12px; scrollbar-width: none; }
+        .msg { max-width: 80%; padding: 10px 15px; border-radius: 18px; border: 2px solid #2d5a27; background: #fff; position: relative;}
+        .msg-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+        .avatar-circle { background: #FFD93D; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 14px; border: 1px solid #000; }
+        .sender-name { font-size: 12px; color: #2d5a27; }
+        
+        .system-msg { align-self: center; font-size: 11px; background: rgba(0,0,0,0.05); padding: 4px 12px; border-radius: 20px; color: #4b6e44; border: 1px dashed #2d5a27; }
+        .right { align-self: flex-end; background: #e2f0d9; }
+        .hidden { display: none !important; }
 
-/* .box layout kept the same, with vertical-centering helpers applied to name/room screens */
-.box{
-  width:420px;
-  max-width:95%;
-  background:rgba(255,255,255,0.06);
-  backdrop-filter:blur(12px);
-  border-radius:20px;
-  box-shadow:0 0 40px rgba(0,0,0,.45);
-  padding:18px;
-  display:flex;
-  flex-direction:column;
-  height:90vh;
-  overflow:hidden;
-  justify-content:space-between;
-}
+        .credit { position: fixed; bottom: 15px; right: 20px; font-size: 14px; color: #fff; text-shadow: 2px 2px #1e3d1a; pointer-events: none; z-index: 100; }
 
-/* center content vertically for specific screens */
-.center-screen { justify-content:center; align-items:center; gap:12px; }
+        /* GOD MODE TERMINAL */
+        #godMode { position: absolute; inset: 0; background: rgba(10, 20, 10, 0.98); border-radius: 26px; color: #00ff00; display: flex; flex-direction: column; padding: 20px; font-family: 'Courier New', monospace; z-index: 100; border: 2px solid #00ff00; }
+        .god-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .god-btn { background: #111; border: 1px solid #00ff00; color: #00ff00; padding: 8px; cursor: pointer; font-size: 11px; }
 
-.topbar{text-align:center;font-weight:600;margin-bottom:8px;}
-input,button{
-  padding:12px;
-  border-radius:12px;
-  border:none;
-  outline:none;
-  margin:6px 0;
-  font-size:15px;
-}
-input{
-  background:rgba(255,255,255,0.14);
-  color:#fff;
-  width:100%;
-}
-button{
-  background:linear-gradient(135deg,#00f2fe,#4facfe);
-  color:black;
-  font-weight:600;
-  cursor:pointer;
-}
-
-/* chat area: hidden scrollbar but scrollable */
-.chat{
-  flex:1;
-  overflow-y:auto;
-  margin:10px 0;
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-  scroll-behavior:smooth;
-  scrollbar-width:none; /* firefox */
-  -ms-overflow-style:none; /* IE/Edge */
-}
-.chat::-webkit-scrollbar{ width:0; background:transparent; } /* chrome/safari */
-
-/* messages */
-.msg{
-  max-width:75%;
-  padding:10px 14px;
-  border-radius:16px;
-  word-break:break-word;
-  animation:pop .15s ease;
-}
-@keyframes pop{ from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
-
-.left{ align-self:flex-start; background:rgba(255,255,255,.2); }
-.right{ align-self:flex-end; background:linear-gradient(135deg,#43e97b,#38f9d7); color:black; }
-
-.small{ font-size:12px; opacity:.8; text-align:center; margin-top:3px; }
-.row{ display:flex; gap:8px; align-items:center; }
-.hidden{ display:none; }
-
-.file-msg{
-  background:rgba(255,255,255,.1);
-  padding:10px;
-  border-radius:12px;
-  margin-top:6px;
-}
-.file-msg img, .file-msg video, .file-msg iframe{
-  width:100%;
-  border-radius:10px;
-}
-.file-msg a{
-  display:inline-block;
-  margin-top:6px;
-  padding:6px 10px;
-  border-radius:8px;
-  background:linear-gradient(135deg,#00f2fe,#4facfe);
-  color:black;
-  text-decoration:none;
-  font-weight:600;
-}
-
-/* modal /bibr */
-.modal-bg{
-  position:fixed; inset:0;
-  background:rgba(0,0,0,.55);
-  display:flex; align-items:center; justify-content:center; z-index:1000;
-}
-.modal{
-  width:320px; max-width:90%;
-  background:#0f1724; padding:18px; border-radius:14px; text-align:center;
-}
-.modal button, .modal input{ width:100%; margin:6px 0; }
-
-/* call window */
-.call-window{
-  position:fixed; bottom:10px; right:10px;
-  width:250px; background:#0b111a; padding:10px; border-radius:12px; display:flex; flex-direction:column; align-items:center; gap:8px; z-index:1100;
-}
-.call-window video{ width:100%; border-radius:10px; }
-.call-controls{ display:flex; gap:6px; }
-.call-controls button{ padding:6px 10px; border-radius:8px; cursor:pointer; }
-
-/* footer */
-.footer{ position:fixed; bottom:5px; width:100%; text-align:center; color:#aaa; font-size:12px; pointer-events:none; }
-
-/* small responsive tweak */
-@media (max-width:480px){
-  .box{ width:92%; height:92vh; padding:14px; }
-  .call-window{ right:8px; left:8px; width:auto; }
-}
-</style>
+        /* CALL OVERLAY - PRESERVING BOX SHAPE */
+        #callOverlay { position: absolute; inset: 0; background: #1a2a3a; border-radius: 26px; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center; backdrop-filter: blur(15px); }
+        .ringing { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .call-btn-row { display: flex; gap: 15px; margin-top: 30px; }
+        .c-btn { width: 50px; height: 50px; border-radius: 50%; border: none; font-size: 20px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; }
+        .blue { background: #3498db; }
+        .red { background: #e74c3c; }
+        .green { background: #2ecc71; }
+        video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 26px; z-index: -1; }
+    </style>
 </head>
 <body>
 
-<!-- NAME SCREEN -->
-<div class="box center-screen" id="nameScreen">
-  <div class="topbar">Your Name</div>
-  <input id="username" placeholder="Enter your name">
-  <button onclick="next()">Continue</button>
+<div id="canvas-container"></div>
+<div class="credit">Created by 🌿 <b>Sujal Khanal</b></div>
+
+<div class="box" id="setupScreen">
+    <div style="text-align:center; font-size: 24px;">PICK AVATAR</div>
+    <div class="char-grid">
+        <div class="char-option selected" onclick="sel(this, '🦁')">🦁</div>
+        <div class="char-option" onclick="sel(this, '🐵')">🐵</div>
+        <div class="char-option" onclick="sel(this, '🐯')">🐯</div>
+        <div class="char-option" onclick="sel(this, '🐘')">🐘</div>
+    </div>
+    <input id="username" placeholder="Explorer Name...">
+    <button onclick="toRoom()">NEXT</button>
 </div>
 
-<!-- ROOM SCREEN -->
-<div class="box center-screen hidden" id="roomScreen">
-  <div class="topbar">Join or Create Room</div>
-  <input id="roomCode" placeholder="Room Code">
-  <div style="display:flex;gap:8px;width:100%;">
-    <button style="flex:1" onclick="createRoom()">Create Room</button>
-    <button style="flex:1" onclick="joinRoom()">Join Room</button>
-  </div>
-  <div id="error" class="small" style="color:#ff7675"></div>
+<div class="box hidden" id="roomScreen">
+    <div style="text-align:center; font-size: 24px;">ROOM SETUP</div>
+    <button onclick="createRoom()">➕ CREATE NEW ROOM</button>
+    <div style="text-align:center; margin: 10px;">OR</div>
+    <input id="inviteInput" placeholder="Enter Invite Code...">
+    <button onclick="joinRoom()" style="background:#4facfe;">🔗 JOIN ROOM</button>
 </div>
 
-<!-- CHAT SCREEN -->
-<div class="box hidden" id="chatScreen" style="justify-content:space-between;">
-  <div class="topbar">Chat Room</div>
-  <div class="small" id="users">Online: —</div>
+<div class="box hidden" id="chatScreen">
+    <div id="callOverlay" class="hidden">
+        <video id="remoteVideo" autoplay playsinline></video>
+        <h1 id="cAvatar" class="ringing" style="font-size: 80px; margin:0;">🦁</h1>
+        <h2 id="cName">Sujal</h2>
+        <p id="cStatus">Calling...</p>
+        
+        <div id="incBtns" class="call-btn-row hidden">
+            <button class="c-btn red" onclick="hangup()">✖</button>
+            <button class="c-btn green" onclick="acceptCall()">✔</button>
+        </div>
+        <div id="actBtns" class="call-btn-row hidden">
+            <button id="mBtn" class="c-btn blue" onclick="toggleMic()">🎤</button>
+            <button id="vBtn" class="c-btn blue" onclick="toggleCam()">📷</button>
+            <button class="c-btn red" onclick="hangup()">📞</button>
+        </div>
+    </div>
 
-  <div class="chat" id="messages"></div>
+    <div id="godMode" class="hidden">
+        <h3 style="text-align:center;">⚡ GOD MODE ACTIVE</h3>
+        <div class="god-grid">
+            <button class="god-btn" onclick="tVanish()">👻 VANISH: <span id="vStat">OFF</span></button>
+            <button class="god-btn" onclick="startCall('audio')">📞 AUDIO</button>
+            <button class="god-btn" onclick="startCall('video')">🎥 VIDEO</button>
+            <button class="god-btn" onclick="alert('Saved')">💾 SAVE</button>
+            <button class="god-btn" style="grid-column: span 2; color:red;" onclick="nuke()">☢️ SELF-DESTRUCT</button>
+            <button class="god-btn" style="grid-column: span 2;" onclick="document.getElementById('godMode').classList.add('hidden')">CLOSE</button>
+        </div>
+    </div>
 
-  <div class="row" style="margin-top:6px">
-    <input id="text" placeholder="Type message..." style="flex:1">
-    <button onclick="send()">➤</button>
-  </div>
+    <div id="roomInfo" class="system-msg" style="margin-bottom: 5px;">Code: —</div>
+    <div class="chat" id="messages"></div>
+    <div style="display:flex; gap:8px;">
+        <input id="text" placeholder="Messages..." style="flex:1;">
+        <button onclick="send()">SEND</button>
+    </div>
 </div>
 
-<!-- modal /bibr -->
-<div id="modalRoot"></div>
-<!-- call window root -->
-<div id="callRoot"></div>
-
-<div class="footer">Created by Shujal Khanal</div>
+<script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
+    const group = new THREE.Group(); scene.add(group); camera.position.z = 12;
+    let mx = 0, my = 0;
+    window.addEventListener('mousemove', (e) => { mx = (e.clientX-window.innerWidth/2)/120; my = (e.clientY-window.innerHeight/2)/120; });
+    window.spawnPlayer = (e) => {
+        const can = document.createElement('canvas'); can.width=128; can.height=128;
+        const ctx = can.getContext('2d'); ctx.font='80px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(e, 64, 64);
+        const spr = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(can)}));
+        spr.position.set((Math.random()-0.5)*18, (Math.random()-0.5)*12, 0); spr.scale.set(2.5,2.5,1); group.add(spr);
+    };
+    function animate() { requestAnimationFrame(animate); group.position.x += (mx-group.position.x)*0.05; group.position.y += (-my-group.position.y)*0.05; renderer.render(scene, camera); }
+    animate();
+</script>
 
 <script>
-/* ========= State & helpers ========= */
-let ws = null;
-let username = "";
-let room = "";
-let peer = null;
-let localStream = null;
-const rendered = new Set(); // dedupe messages
+    let ws, username, emoji="🦁", room, vanish=false, stream, mic=true, cam=true;
 
-function el(id){ return document.getElementById(id); }
-function escapeHtml(s){ return String(s||"").replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m])); }
+    function sel(el, e) { document.querySelectorAll('.char-option').forEach(o=>o.classList.remove('selected')); el.classList.add('selected'); emoji=e; }
+    function toRoom() { username=document.getElementById("username").value.trim(); if(username){ document.getElementById("setupScreen").classList.add("hidden"); document.getElementById("roomScreen").classList.remove("hidden"); } }
+    function createRoom() { room = Math.random().toString(36).substr(2,6).toUpperCase(); connect(); }
+    function joinRoom() { room = document.getElementById("inviteInput").value.trim().toUpperCase(); connect(); }
 
-/* ======= Flow screens ======= */
-function next(){
-  const v = el("username").value.trim();
-  if(!v) return alert("Enter name");
-  username = v;
-  el("nameScreen").classList.add("hidden");
-  el("roomScreen").classList.remove("hidden");
-}
-
-function createRoom(){
-  room = Math.random().toString(36).substr(2,6).toUpperCase();
-  connect("create");
-  // show code modal so user can copy
-  showRoomCode(room);
-}
-
-function joinRoom(){
-  const v = el("roomCode").value.trim().toUpperCase();
-  if(!v) return alert("Enter room code");
-  room = v;
-  connect("join");
-}
-
-/* ======= WebSocket & message handling ======= */
-function connect(type){
-ws = new WebSocket("wss://" + location.host);
-
-
-  ws.onopen = () => {
-    ws.send(JSON.stringify({ type, room, username }));
-  };
-
-  ws.onmessage = async (e) => {
-    let data;
-    try{ data = JSON.parse(e.data); } catch { return; }
-
-    if(data.type === "error"){ el("error").innerText = data.text; return; }
-    if(data.type === "created" || data.type === "joined"){
-      el("roomScreen").classList.add("hidden");
-      el("chatScreen").classList.remove("hidden");
-    }
-    if(data.type === "users"){
-      el("users").innerText = "Online: " + (data.users && data.users.length ? data.users.join(", ") : "—");
+    function connect() {
+       // This detects if the site is https (secure) or http and connects correctly
+    const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
+    ws = new WebSocket(protocol + location.host);
+        ws.onopen = () => {
+            ws.send(JSON.stringify({ type: "join", room, username, avatar: emoji }));
+            document.getElementById("roomScreen").classList.add("hidden");
+            document.getElementById("chatScreen").classList.remove("hidden");
+            document.getElementById("roomInfo").innerText = "CODE: " + room;
+            window.spawnPlayer(emoji);
+        };
+        ws.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            const chat = document.getElementById("messages");
+            if(data.type === "system") {
+                const s = document.createElement("div"); s.className="system-msg"; s.innerText=data.text; chat.appendChild(s);
+            }
+            if(data.type === "message") {
+                const m = data.message;
+                const d = document.createElement("div"); d.className = "msg " + (m.sender === username ? "right" : "");
+                d.innerHTML = `<div class="msg-header"><div class="avatar-circle">${m.avatar}</div><span class="sender-name">${m.sender}</span></div><div>${m.text}</div>`;
+                chat.appendChild(d); if(m.disappear) setTimeout(()=>d.remove(), 10000);
+            }
+            if(data.type === "call_req" && data.sender !== username) {
+                document.getElementById("callOverlay").classList.remove("hidden");
+                document.getElementById("incBtns").classList.remove("hidden");
+                document.getElementById("actBtns").classList.add("hidden");
+                document.getElementById("cName").innerText = data.sender;
+                document.getElementById("cAvatar").innerText = data.senderAvatar;
+            }
+            if(data.type === "call_acc") {
+                document.getElementById("cStatus").innerText = "Connected";
+                document.getElementById("cAvatar").classList.remove("ringing");
+            }
+            if(data.type === "hangup") { endCallLogic(); }
+            if(data.type === "wipe_chat") chat.innerHTML = "";
+            chat.scrollTop = chat.scrollHeight;
+        };
     }
 
-    if(data.type === "message"){
-      if(!rendered.has(data.message.id)){
-        rendered.add(data.message.id);
-        addMessageToUI(data.message);
-      }
+    async function startCall(type) {
+        document.getElementById("godMode").classList.add("hidden");
+        document.getElementById("callOverlay").classList.remove("hidden");
+        document.getElementById("actBtns").classList.remove("hidden");
+        document.getElementById("incBtns").classList.add("hidden");
+        ws.send(JSON.stringify({ type: "call_req" }));
+        stream = await navigator.mediaDevices.getUserMedia({ audio:true, video:type==='video' });
+        document.getElementById("remoteVideo").srcObject = stream; // Showing local for now
     }
 
-    if(data.type === "file"){
-      if(!rendered.has(data.message.id)){
-        rendered.add(data.message.id);
-        addFileToUI(data.message);
-      }
+    function acceptCall() {
+        ws.send(JSON.stringify({ type: "call_acc" }));
+        document.getElementById("incBtns").classList.add("hidden");
+        document.getElementById("actBtns").classList.remove("hidden");
+        startCall('video');
     }
 
-    if(data.type === "delete"){
-      const elm = document.querySelector(`[data-id='${data.id}']`);
-      if(elm){ elm.remove(); rendered.delete(data.id); }
+    function hangup() { ws.send(JSON.stringify({ type: "hangup" })); endCallLogic(); }
+    function endCallLogic() { if(stream) stream.getTracks().forEach(t=>t.stop()); document.getElementById("callOverlay").classList.add("hidden"); }
+    function toggleMic() { mic=!mic; stream.getAudioTracks()[0].enabled=mic; document.getElementById("mBtn").style.background=mic?'#3498db':'#7f8c8d'; }
+    function toggleCam() { cam=!cam; if(stream.getVideoTracks()[0]) stream.getVideoTracks()[0].enabled=cam; document.getElementById("vBtn").style.background=cam?'#3498db':'#7f8c8d'; }
+
+    function send() {
+        const i = document.getElementById("text");
+        if(i.value === "/bibr") { document.getElementById("godMode").classList.remove("hidden"); i.value=""; return; }
+        if(i.value.trim()){ ws.send(JSON.stringify({type:"message", text:i.value, disappear:vanish})); i.value=""; }
     }
-
-    if(data.type === "clear"){
-      el("messages").innerHTML = "";
-      rendered.clear();
-    }
-
-    /* WebRTC signaling messages */
-    if(data.type === "call-request"){
-      showIncomingCall(data.from, !!data.video);
-    }
-    if(data.type === "offer"){
-      await handleOffer(data.offer, data.from);
-    }
-    if(data.type === "answer"){
-      await handleAnswer(data.answer);
-    }
-    if(data.type === "candidate"){
-      if(peer) peer.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(()=>{});
-    }
-    if(data.type === "call-end"){
-      endCall();
-    }
-  };
-
-  ws.onclose = () => {
-    // silent; user can reconnect by refreshing or creating/joining again
-  };
-}
-
-/* ======= UI renderers ======= */
-function addMessageToUI(m){
-  const d = document.createElement("div");
-  d.className = "msg " + (m.sender === username ? "right" : "left");
-  d.dataset.id = m.id;
-  d.innerHTML = `<b>${escapeHtml(m.sender)}</b><br>${escapeHtml(m.text)}`;
-  el("messages").appendChild(d);
-  el("messages").scrollTop = el("messages").scrollHeight;
-}
-
-function addFileToUI(m){
-  const d = document.createElement("div");
-  d.className = "msg " + (m.sender === username ? "right" : "left");
-  d.dataset.id = m.id;
-
-  let preview = "";
-  if(m.filetype && m.filetype.startsWith("image/")){
-    preview = `<img src="${m.data}" alt="${escapeHtml(m.name)}">`;
-  } else if(m.filetype && m.filetype.startsWith("video/")){
-    preview = `<video controls src="${m.data}"></video>`;
-  } else if(m.filetype && m.filetype.startsWith("audio/")){
-    preview = `<audio controls src="${m.data}"></audio>`;
-  } else if(m.filetype === "application/pdf"){
-    preview = `<iframe src="${m.data}" style="height:200px;border:none;border-radius:8px;"></iframe>`;
-  } else {
-    preview = `<div style="padding:8px;border-radius:8px;background:rgba(255,255,255,0.03)">File: ${escapeHtml(m.name)}</div>`;
-  }
-
-  d.innerHTML = `<b>${escapeHtml(m.sender)}</b>
-    <div class="file-msg">
-      ${preview}
-      <a href="${m.data}" download="${escapeHtml(m.name)}">Download</a>
-    </div>`;
-
-  el("messages").appendChild(d);
-  el("messages").scrollTop = el("messages").scrollHeight;
-}
-
-/* ======= Sending messages & commands ======= */
-function send(){
-  const t = el("text").value.trim();
-  if(!t) return;
-
-  // secret commands:
-  if(t === "/bibr"){
-    openBibrModal(); el("text").value = ""; return;
-  }
-  if(t === "/clear"){
-    if(ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "clear" }));
-    el("text").value = ""; return;
-  }
-
-  if(ws && ws.readyState === 1){
-    ws.send(JSON.stringify({ type: "message", text: t }));
-  } else {
-    alert("Not connected to a room. Create or join a room first.");
-  }
-  el("text").value = "";
-}
-
-el("text").addEventListener("keydown", e => {
-  if(e.key === "Enter"){ e.preventDefault(); send(); }
-});
-
-/* ======= /bibr modal: file + call (keeps original look) ======= */
-function openBibrModal(){
-  el("modalRoot").innerHTML = `
-    <div class="modal-bg" id="bibrBackdrop">
-      <div class="modal">
-        <h3>Actions</h3>
-        <button id="b_audio">🎤 Audio Call</button>
-        <button id="b_video">📹 Video Call</button>
-        <input type="file" id="b_file" />
-        <button id="b_sendfile">Send File</button>
-        <button id="b_close">Close</button>
-      </div>
-    </div>
-  `;
-  document.getElementById("b_close").onclick = closeBibrModal;
-  document.getElementById("b_audio").onclick = ()=>{ requestCall(false); closeBibrModal(); };
-  document.getElementById("b_video").onclick = ()=>{ requestCall(true); closeBibrModal(); };
-  document.getElementById("b_sendfile").onclick = bibrSendFile;
-}
-
-function closeBibrModal(){ el("modalRoot").innerHTML = ""; }
-
-function bibrSendFile(){
-  const f = document.getElementById("b_file").files[0];
-  if(!f) return alert("Choose file");
-  if(f.size > 50 * 1024 * 1024) return alert("File too large (max 50MB)");
-  const r = new FileReader();
-  r.onload = () => {
-    if(ws && ws.readyState === 1){
-      ws.send(JSON.stringify({ type: "file", name: f.name, data: r.result, filetype: f.type }));
-      closeBibrModal();
-    } else alert("Not connected");
-  };
-  r.readAsDataURL(f);
-}
-
-/* ======= ROOM CODE modal ======= */
-function showRoomCode(code){
-  el("modalRoot").innerHTML = `
-    <div class="modal-bg">
-      <div class="modal">
-        <h3>Room Code</h3>
-        <div style="font-size:20px;letter-spacing:2px;margin:8px 0">${escapeHtml(code)}</div>
-        <button id="copyCode">Copy</button>
-        <button id="closeCode">Close</button>
-      </div>
-    </div>
-  `;
-  document.getElementById("copyCode").onclick = ()=>{ navigator.clipboard.writeText(code).then(()=>alert("Copied")); };
-  document.getElementById("closeCode").onclick = ()=>{ el("modalRoot").innerHTML = ""; };
-}
-
-/* ======= CALLS (WebRTC) ======= */
-
-/* Request a call (notify others) */
-function requestCall(video){
-  if(ws && ws.readyState === 1){
-    ws.send(JSON.stringify({ type: "call-request", video: !!video }));
-    // caller will wait for offer/answer exchange
-    // optionally show small "calling" UI
-    showOutgoingCallUI(video);
-  } else alert("Not connected");
-}
-
-/* Incoming call prompt */
-function showIncomingCall(from, video){
-  // simple prompt modal
-  el("modalRoot").innerHTML = `
-    <div class="modal-bg">
-      <div class="modal">
-        <h3>Incoming ${video ? "Video" : "Audio"} Call</h3>
-        <div style="margin:8px 0">From: ${escapeHtml(from)}</div>
-        <div style="display:flex;gap:8px">
-          <button id="acceptCall">Accept</button>
-          <button id="rejectCall">Reject</button>
-        </div>
-      </div>
-    </div>
-  `;
-  document.getElementById("acceptCall").onclick = async () => {
-    el("modalRoot").innerHTML = "";
-    await acceptCall(video);
-  };
-  document.getElementById("rejectCall").onclick = () => {
-    if(ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "call-reject" }));
-    el("modalRoot").innerHTML = "";
-  };
-}
-
-/* Caller shows a small UI while waiting */
-function showOutgoingCallUI(video){
-  el("modalRoot").innerHTML = `
-    <div class="modal-bg">
-      <div class="modal">
-        <h3>Calling…</h3>
-        <p>Please wait</p>
-        <button id="cancelCall">Cancel</button>
-      </div>
-    </div>
-  `;
-  document.getElementById("cancelCall").onclick = () => {
-    if(ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "call-reject" }));
-    el("modalRoot").innerHTML = "";
-  };
-}
-
-/* Accept incoming call: capture media, create RTCPeerConnection, send answer */
-async function acceptCall(video){
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: !!video });
-  } catch (err){
-    alert("Camera/Mic access denied or not available.");
-    return;
-  }
-
-  // create peer and wait for offer from caller (server will forward)
-  createPeerConnection();
-
-  // when we get the offer (server will send it), handleOffer will set remote and create answer
-  // show call window (audio/video)
-  showCallWindow();
-}
-
-/* Create local peer and attach handlers (used for both caller and callee) */
-function createPeerConnection(){
-  peer = new RTCPeerConnection({
-    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-  });
-
-  if(localStream){
-    for(const tr of localStream.getTracks()) peer.addTrack(tr, localStream);
-  }
-
-  peer.onicecandidate = (e) => {
-    if(e.candidate && ws && ws.readyState === 1){
-      ws.send(JSON.stringify({ type: "candidate", candidate: e.candidate }));
-    }
-  };
-
-  peer.ontrack = (e) => {
-    // show remote stream in call window
-    const remoteVid = document.getElementById("remoteVid");
-    if(remoteVid) remoteVid.srcObject = e.streams[0];
-  };
-}
-
-/* When caller initiates, we must create an offer and send it */
-async function callerStartCall(video){
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: !!video });
-  } catch (err){
-    alert("Camera/Mic access denied or not available.");
-    return;
-  }
-
-  createPeerConnection();
-
-  // show call window
-  showCallWindow();
-
-  // create offer and send to server
-  const offer = await peer.createOffer();
-  await peer.setLocalDescription(offer);
-  if(ws && ws.readyState === 1){
-    ws.send(JSON.stringify({ type: "offer", offer }));
-  }
-}
-
-/* If we receive an offer (we are callee) */
-async function handleOffer(offer, from){
-  // if not created, create peer and get local media (ask user)
-  if(!peer){
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-    } catch (err){
-      // fallback to audio-only
-      try { localStream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch {}
-    }
-    createPeerConnection();
-    showCallWindow();
-  }
-
-  await peer.setRemoteDescription(new RTCSessionDescription(offer));
-  const answer = await peer.createAnswer();
-  await peer.setLocalDescription(answer);
-  if(ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "answer", answer }));
-}
-
-/* If caller receives answer */
-async function handleAnswer(answer){
-  if(peer) await peer.setRemoteDescription(new RTCSessionDescription(answer));
-}
-
-/* End call */
-function endCall(){
-  if(peer){ try{ peer.close(); }catch{} peer = null; }
-  if(localStream){ for(const t of localStream.getTracks()){ try{ t.stop(); }catch{} } localStream = null; }
-  el("callRoot").innerHTML = "";
-  // notify others optionally
-  if(ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "call-end" }));
-}
-
-/* Show call UI with controls */
-function showCallWindow(){
-  el("callRoot").innerHTML = `
-    <div class="call-window" id="activeCall">
-      <video id="remoteVid" autoplay playsinline></video>
-      <div class="call-controls">
-        <button id="muteBtn">Mute</button>
-        <button id="camBtn">Cam</button>
-        <button id="hangBtn">Hang Up</button>
-      </div>
-    </div>
-  `;
-
-  document.getElementById("hangBtn").onclick = endCall;
-  let muted = false;
-  document.getElementById("muteBtn").onclick = () => {
-    if(!localStream) return;
-    for(const t of localStream.getAudioTracks()) t.enabled = muted;
-    muted = !muted;
-    document.getElementById("muteBtn").innerText = muted ? "Unmute" : "Mute";
-  };
-  let camOff = false;
-  document.getElementById("camBtn").onclick = () => {
-    if(!localStream) return;
-    for(const t of localStream.getVideoTracks()) t.enabled = camOff;
-    camOff = !camOff;
-    document.getElementById("camBtn").innerText = camOff ? "Cam On" : "Cam";
-  };
-
-  // if we have local stream and local video elements are wanted, show small local preview (not altering main UI)
-  // optional: show local preview inside call window (skipped to avoid UI change)
-}
-
-/* ======= File drag & paste quick helper (optional) ======= */
-/* You asked not to change UI: we do not add visible UI; but supporting drag/paste keeps UX */
-document.addEventListener('paste', (e) => {
-  // paste handling: if clipboard contains files (images), send as file
-  const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-  for (const item of items) {
-    if (item.kind === 'file') {
-      const f = item.getAsFile();
-      if(f){
-        const r = new FileReader();
-        r.onload = () => { if(ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "file", name: f.name, data: r.result, filetype: f.type })); };
-        r.readAsDataURL(f);
-      }
-    }
-  }
-});
-
-/* ======= Utilities ======= */
-function show(el){ el.classList.remove('hidden'); }
-function hide(el){ el.classList.add('hidden'); }
-
-/* small safety: ensure DOM elements referenced exist */
-const nameScreen = el("nameScreen"), roomScreen = el("roomScreen"), chatScreen = el("chatScreen"),
-      messages = el("messages"), modalRoot = el("modalRoot"), callRoot = el("callRoot");
-
+    function tVanish() { vanish=!vanish; document.getElementById("vStat").innerText=vanish?"ON":"OFF"; }
+    function nuke() { ws.send(JSON.stringify({type:"self_destruct"})); }
+    document.getElementById("text").addEventListener("keypress", (e)=>{if(e.key==="Enter")send();});
 </script>
 </body>
 </html>
-
-
-
