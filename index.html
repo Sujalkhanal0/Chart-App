@@ -2,8 +2,9 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Jungle Chat 3D - Sujal Khanal Edition</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>BiBr Charts - Sujal Khanal Edition</title>
+   
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0">
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
     <style>
         body { margin: 0; min-height: 100vh; display: flex; justify-content: center; align-items: center; background: #76ba1b; font-family: 'Fredoka One', cursive; color: #444; overflow: hidden; }
@@ -14,15 +15,20 @@
         .selected { background: #FFD93D; border: 3px solid #000; }
         input, button { border: 3px solid #2d5a27; padding: 12px; border-radius: 12px; font-family: inherit; font-size: 16px; outline: none; }
         button { background: #76ba1b; color: white; cursor: pointer; }
-        .chat { flex: 1; overflow-y: auto; margin: 15px 0; display: flex; flex-direction: column; gap: 12px; scrollbar-width: none; }
-        .msg { max-width: 80%; padding: 10px 15px; border-radius: 18px; border: 2px solid #2d5a27; background: #fff; position: relative; word-wrap: break-word; }
+        .chat { flex: 1; overflow-y: auto; margin: 15px 0; display: flex; flex-direction: column; gap: 12px; scrollbar-width: none; position: relative; }
+        .msg { max-width: 80%; padding: 10px 15px; border-radius: 18px; border: 2px solid #2d5a27; background: #fff; position: relative; word-wrap: break-word; transition: opacity 0.6s, transform 0.6s; }
+        .vanish { opacity: 0; transform: translateY(-20px) scale(0.9); pointer-events: none; }
         .msg-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
         .avatar-circle { background: #FFD93D; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 14px; border: 1px solid #000; }
         .sender-name { font-size: 12px; color: #2d5a27; }
         .system-msg { align-self: center; font-size: 11px; background: rgba(0,0,0,0.05); padding: 4px 12px; border-radius: 20px; color: #4b6e44; border: 1px dashed #2d5a27; }
         .right { align-self: flex-end; background: #e2f0d9; }
         .hidden { display: none !important; }
-        .credit { position: fixed; bottom: 15px; right: 20px; font-size: 14px; color: #fff; text-shadow: 2px 2px #1e3d1a; pointer-events: none; z-index: 100; }
+        
+        /* FIXED CENTERED CREDIT */
+        .credit { position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%); font-size: 12px; color: #fff; text-shadow: 1px 1px #1e3d1a; pointer-events: none; z-index: 1; opacity: 0.8; width: 100%; text-align: center; }
+
+        #typingBox { font-size: 12px; color: #2d5a27; height: 20px; font-style: italic; margin-bottom: 5px; opacity: 0; transition: 0.3s; display: flex; align-items: center; gap: 5px; }
         #godMode { position: absolute; inset: 0; background: rgba(10, 20, 10, 0.98); border-radius: 26px; color: #00ff00; display: flex; flex-direction: column; padding: 20px; font-family: 'Courier New', monospace; z-index: 100; border: 2px solid #00ff00; }
         .god-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
         .god-btn { background: #111; border: 1px solid #00ff00; color: #00ff00; padding: 8px; cursor: pointer; font-size: 11px; }
@@ -33,14 +39,8 @@
         .c-btn { width: 50px; height: 50px; border-radius: 50%; border: none; font-size: 20px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; }
         .blue { background: #3498db; } .red { background: #e74c3c; } .green { background: #2ecc71; }
         video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 26px; background: #000; }
-
-        /* Error Shake Effect */
         .invalid-input { border-color: #ff4757 !important; background: #fff1f2; animation: shake 0.3s ease-in-out; }
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-8px); }
-            75% { transform: translateX(8px); }
-        }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
         #roomErr { color: #ff4757; font-size: 12px; margin-top: 5px; text-align: center; height: 15px; font-weight: bold; }
     </style>
 </head>
@@ -75,8 +75,7 @@
         <video id="remoteVideo" autoplay playsinline></video>
         <div id="callUI" style="z-index: 205; position: relative;">
             <h1 id="cAvatar" class="ringing" style="font-size: 80px; margin:0;">🦁</h1>
-            <h2 id="cName">Sujal</h2>
-            <p id="cStatus">Calling...</p>
+            <h2 id="cName">Sujal</h2><p id="cStatus">Calling...</p>
         </div>
         <div id="incBtns" class="call-btn-row hidden">
             <button class="c-btn red" onclick="hangup()">✖</button>
@@ -102,8 +101,9 @@
         </div>
     </div>
 
-    <div id="roomInfo" class="system-msg" style="margin-bottom: 5px;">Code: —</div>
+    <div id="roomInfo" class="system-msg" style="margin-bottom: 5px; font-weight: bold;">Code: —</div>
     <div class="chat" id="messages"></div>
+    <div id="typingBox"></div>
     <div style="display:flex; gap:8px;">
         <input id="text" placeholder="Messages..." style="flex:1;">
         <button onclick="send()">SEND</button>
@@ -131,78 +131,93 @@
 </script>
 
 <script>
-    let ws, username, emoji="🦁", room, vanish=false, stream, mic=true, cam=true;
-    let pc, candidateQueue = [];
+    let ws, username, emoji="🦁", room, vanish=false, stream, mic=true, cam=true, pc;
+    const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
+    ws = new WebSocket(protocol + location.host);
     const iceCfg = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+    const joinSfx = new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3');
+
+    ws.onmessage = async (e) => {
+        const data = JSON.parse(e.data);
+        const chat = document.getElementById("messages");
+        if (data.type === "join_success") {
+            room = data.room;
+            document.getElementById("roomScreen").classList.add("hidden");
+            document.getElementById("chatScreen").classList.remove("hidden");
+            document.getElementById("roomInfo").innerText = "CODE: " + (room === "BIBROO_ROOM" ? "BIBR00" : room);
+            window.spawnPlayer(emoji);
+        }
+        if (data.type === "error") {
+            const inp = document.getElementById("inviteInput");
+            inp.classList.add("invalid-input");
+            document.getElementById("roomErr").innerText = data.message;
+        }
+        if (data.type === "message") {
+            const m = data.message;
+            const d = document.createElement("div"); d.className = "msg " + (m.sender === username ? "right" : "");
+            let fileH = m.file ? (m.file.startsWith("data:image") ? `<img src="${m.file}" style="max-width:100%; border-radius:10px; margin-top:8px;">` : "") + `<br><a href="${m.file}" download="${m.fileName}" style="color:#76ba1b; font-size:12px;">📎 Download</a>` : "";
+            d.innerHTML = `<div class="msg-header"><div class="avatar-circle">${m.avatar}</div><span class="sender-name">${m.sender}</span></div><div>${m.text}</div>${fileH}`;
+            chat.appendChild(d); chat.scrollTop = chat.scrollHeight;
+            if (m.disappear) {
+                setTimeout(() => { d.classList.add('vanish'); setTimeout(() => d.remove(), 600); }, 10000);
+            }
+        }
+        if (data.type === "typing" && data.sender !== username) {
+            const tBox = document.getElementById("typingBox");
+            if(data.isTyping) {
+                tBox.innerHTML = `<div class="avatar-circle" style="width:18px;height:18px;font-size:10px">${data.avatar}</div> ${data.sender} is typing...`;
+                tBox.style.opacity = "1";
+            } else { tBox.style.opacity = "0"; }
+        }
+        if (data.type === "system") {
+            const s = document.createElement("div"); s.className="system-msg"; s.innerText=data.text;
+            chat.appendChild(s); if(data.text.includes("joined")) joinSfx.play().catch(()=>{});
+        }
+        if (data.type === "call_req" && data.sender !== username) {
+            document.getElementById("callOverlay").classList.remove("hidden");
+            document.getElementById("incBtns").classList.remove("hidden");
+            document.getElementById("actBtns").classList.add("hidden");
+            document.getElementById("cName").innerText = data.sender;
+            document.getElementById("cAvatar").innerText = data.senderAvatar || "🦁";
+        }
+        if(data.sender !== username) {
+            if(data.type === "call_acc") { if(!pc) initPeer(); const o = await pc.createOffer(); await pc.setLocalDescription(o); ws.send(JSON.stringify({ type: "offer", offer: o })); }
+            if(data.type === "offer") { if(!pc) initPeer(); await pc.setRemoteDescription(new RTCSessionDescription(data.offer)); }
+            if(data.type === "hangup") endCallLogic();
+        }
+        if (data.type === "wipe_chat") chat.innerHTML = "";
+    };
 
     function sel(el, e) { document.querySelectorAll('.char-option').forEach(o=>o.classList.remove('selected')); el.classList.add('selected'); emoji=e; }
     function toRoom() { username=document.getElementById("username").value.trim(); if(username){ document.getElementById("setupScreen").classList.add("hidden"); document.getElementById("roomScreen").classList.remove("hidden"); } }
-    function createRoom() { room = Math.random().toString(36).substr(2,6).toUpperCase(); connect(); }
-    
-    function joinRoom() { 
-        const inp = document.getElementById("inviteInput");
-        const val = inp.value.trim();
-        if(val.toLowerCase() === "bibr00") { room = "BIBROO_ROOM"; connect(); } 
-        else if(val.length === 6) { room = val.toUpperCase(); connect(); }
-        else {
-            inp.classList.remove("invalid-input"); 
-            void inp.offsetWidth; 
-            inp.classList.add("invalid-input");
-            document.getElementById("roomErr").innerText = "INVALID ROOM CODE!";
+    function createRoom() {
+        const newCode = Math.random().toString(36).substr(2,6).toUpperCase();
+        ws.send(JSON.stringify({ type: "generate_code", code: newCode }));
+        ws.send(JSON.stringify({ type: "join", room: newCode, username, avatar: emoji }));
+    }
+    function joinRoom() {
+        const val = document.getElementById("inviteInput").value.trim().toUpperCase();
+        ws.send(JSON.stringify({ type: "join", room: val, username, avatar: emoji }));
+    }
+    function tVanish() { vanish=!vanish; document.getElementById("vStat").innerText=vanish?"ON":"OFF"; }
+    function send() {
+        const i = document.getElementById("text");
+        if(i.value === "/bibr") { document.getElementById("godMode").classList.remove("hidden"); i.value=""; return; }
+        if(i.value.trim()){ 
+            ws.send(JSON.stringify({type:"message", text:i.value, disappear: vanish})); 
+            i.value=""; 
+            ws.send(JSON.stringify({ type: "typing", isTyping: false, avatar: emoji }));
         }
     }
-
-    function connect() {
-        const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
-        ws = new WebSocket(protocol + location.host);
-        ws.onopen = () => {
-            ws.send(JSON.stringify({ type: "join", room, username, avatar: emoji }));
-            document.getElementById("roomScreen").classList.add("hidden");
-            document.getElementById("chatScreen").classList.remove("hidden");
-            document.getElementById("roomInfo").innerText = "CODE: " + (room === "BIBROO_ROOM" ? "BIBROO" : room);
-            window.spawnPlayer(emoji);
+    function sendFile(el) {
+        const file = el.files[0]; if(!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            ws.send(JSON.stringify({ type: "message", text: `Sent a file: ${file.name}`, file: reader.result, fileName: file.name, disappear: vanish }));
         };
-        ws.onmessage = async (e) => {
-            const data = JSON.parse(e.data);
-            const chat = document.getElementById("messages");
-
-            if(data.type === "call_req" && data.sender !== username) {
-                document.getElementById("callOverlay").classList.remove("hidden");
-                document.getElementById("incBtns").classList.remove("hidden");
-                document.getElementById("actBtns").classList.add("hidden");
-                document.getElementById("cName").innerText = data.sender;
-                document.getElementById("cAvatar").innerText = data.senderAvatar || "🦁";
-            }
-
-            if(data.type === "message") {
-                const m = data.message;
-                const d = document.createElement("div"); d.className = "msg " + (m.sender === username ? "right" : "");
-                let fileH = m.file ? (m.file.startsWith("data:image") ? `<img src="${m.file}" style="max-width:100%; border-radius:10px; margin-top:8px;">` : "") + `<br><a href="${m.file}" download="${m.fileName}" style="color:#76ba1b; font-size:12px;">📎 Download</a>` : "";
-                d.innerHTML = `<div class="msg-header"><div class="avatar-circle">${m.avatar}</div><span class="sender-name">${m.sender}</span></div><div>${m.text}</div>${fileH}`;
-                chat.appendChild(d);
-                chat.scrollTop = chat.scrollHeight;
-                if(m.disappear) setTimeout(()=>d.remove(), 10000);
-            }
-
-            if(data.type === "system") { 
-                const s = document.createElement("div"); 
-                s.className="system-msg"; 
-                s.innerText=data.text; 
-                chat.appendChild(s); 
-                chat.scrollTop = chat.scrollHeight;
-            }
-
-            if(data.sender !== username) {
-                if(data.type === "offer") { if(!pc) initPeer(); await pc.setRemoteDescription(new RTCSessionDescription(data.offer)); while(candidateQueue.length) await pc.addIceCandidate(candidateQueue.shift()); }
-                else if(data.type === "answer") { await pc.setRemoteDescription(new RTCSessionDescription(data.answer)); }
-                else if(data.type === "candidate") { const c = new RTCIceCandidate(data.candidate); if(pc && pc.remoteDescription) await pc.addIceCandidate(c); else candidateQueue.push(c); }
-                else if(data.type === "call_acc") { if(!pc) initPeer(); const o = await pc.createOffer(); await pc.setLocalDescription(o); ws.send(JSON.stringify({ type: "offer", offer: o })); }
-            }
-            if(data.type === "hangup") endCallLogic();
-            if(data.type === "wipe_chat") chat.innerHTML = "";
-        };
+        reader.readAsDataURL(file);
     }
-
+    
     async function startCall(t) {
         document.getElementById("godMode").classList.add("hidden");
         document.getElementById("callOverlay").classList.remove("hidden");
@@ -214,10 +229,14 @@
     function initPeer() { pc = new RTCPeerConnection(iceCfg); if(stream) stream.getTracks().forEach(t => pc.addTrack(t, stream)); pc.onicecandidate = e => { if(e.candidate) ws.send(JSON.stringify({ type: "candidate", candidate: e.candidate })); }; pc.ontrack = e => { document.getElementById("remoteVideo").srcObject = e.streams[0]; document.getElementById("callUI").classList.add("hidden"); }; }
     function hangup() { ws.send(JSON.stringify({ type: "hangup" })); endCallLogic(); }
     function endCallLogic() { if(pc) pc.close(); pc = null; if(stream) stream.getTracks().forEach(t=>t.stop()); document.getElementById("callOverlay").classList.add("hidden"); document.getElementById("callUI").classList.remove("hidden"); }
-    function send() { const i = document.getElementById("text"); if(i.value === "/bibr") { document.getElementById("godMode").classList.remove("hidden"); i.value=""; return; } if(i.value.trim()){ ws.send(JSON.stringify({type:"message", text:i.value, disappear:vanish})); i.value=""; } }
-    function toggleMic() { mic=!mic; if(stream) stream.getAudioTracks()[0].enabled=mic; }
-    function toggleCam() { cam=!cam; if(stream && stream.getVideoTracks()[0]) stream.getVideoTracks()[0].enabled=cam; }
-    function tVanish() { vanish=!vanish; document.getElementById("vStat").innerText=vanish?"ON":"OFF"; }
+
+    let typingTimer;
+    document.getElementById("text").addEventListener("input", () => {
+        ws.send(JSON.stringify({ type: "typing", isTyping: true, avatar: emoji }));
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => { ws.send(JSON.stringify({ type: "typing", isTyping: false, avatar: emoji })); }, 2000);
+    });
+
     function nuke() { ws.send(JSON.stringify({type:"self_destruct"})); }
     document.getElementById("text").addEventListener("keypress", (e)=>{if(e.key==="Enter")send();});
 </script>
