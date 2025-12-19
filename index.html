@@ -8,44 +8,40 @@
     <style>
         body { margin: 0; min-height: 100vh; display: flex; justify-content: center; align-items: center; background: #76ba1b; font-family: 'Fredoka One', cursive; color: #444; overflow: hidden; }
         #canvas-container { position: fixed; inset: 0; z-index: -1; }
-        
-        /* ORIGINAL BOX DESIGN */
         .box { width: 420px; max-width: 95%; background: rgba(255, 255, 255, 0.95); border: 4px solid #2d5a27; border-radius: 30px; box-shadow: 8px 8px 0px #1e3d1a; padding: 25px; display: flex; flex-direction: column; height: 80vh; justify-content: space-between; position: relative; z-index: 10; }
-        
         .char-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 15px 0; }
-        .char-option { font-size: 30px; padding: 10px; border: 3px solid #eee; border-radius: 15px; cursor: pointer; text-align: center; transition: 0.2s; background: white; }
+        .char-option { font-size: 30px; padding: 10px; border: 3px solid #eee; border-radius: 15px; cursor: pointer; text-align: center; background: white; }
         .selected { background: #FFD93D; border: 3px solid #000; }
-        
-        input, button { border: 3px solid #2d5a27; padding: 12px; border-radius: 12px; font-family: inherit; font-size: 16px; }
+        input, button { border: 3px solid #2d5a27; padding: 12px; border-radius: 12px; font-family: inherit; font-size: 16px; outline: none; }
         button { background: #76ba1b; color: white; cursor: pointer; }
-        
         .chat { flex: 1; overflow-y: auto; margin: 15px 0; display: flex; flex-direction: column; gap: 12px; scrollbar-width: none; }
-        .msg { max-width: 80%; padding: 10px 15px; border-radius: 18px; border: 2px solid #2d5a27; background: #fff; position: relative;}
+        .msg { max-width: 80%; padding: 10px 15px; border-radius: 18px; border: 2px solid #2d5a27; background: #fff; position: relative; word-wrap: break-word; }
         .msg-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
         .avatar-circle { background: #FFD93D; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 14px; border: 1px solid #000; }
         .sender-name { font-size: 12px; color: #2d5a27; }
-        
         .system-msg { align-self: center; font-size: 11px; background: rgba(0,0,0,0.05); padding: 4px 12px; border-radius: 20px; color: #4b6e44; border: 1px dashed #2d5a27; }
         .right { align-self: flex-end; background: #e2f0d9; }
         .hidden { display: none !important; }
-
         .credit { position: fixed; bottom: 15px; right: 20px; font-size: 14px; color: #fff; text-shadow: 2px 2px #1e3d1a; pointer-events: none; z-index: 100; }
-
-        /* GOD MODE TERMINAL */
         #godMode { position: absolute; inset: 0; background: rgba(10, 20, 10, 0.98); border-radius: 26px; color: #00ff00; display: flex; flex-direction: column; padding: 20px; font-family: 'Courier New', monospace; z-index: 100; border: 2px solid #00ff00; }
         .god-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
         .god-btn { background: #111; border: 1px solid #00ff00; color: #00ff00; padding: 8px; cursor: pointer; font-size: 11px; }
-
-        /* CALL OVERLAY - PRESERVING BOX SHAPE */
-        #callOverlay { position: absolute; inset: 0; background: #1a2a3a; border-radius: 26px; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center; backdrop-filter: blur(15px); }
+        #callOverlay { position: absolute; inset: 0; background: #1a2a3a; border-radius: 26px; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center; backdrop-filter: blur(15px); overflow: hidden; }
         .ringing { animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-        .call-btn-row { display: flex; gap: 15px; margin-top: 30px; }
+        .call-btn-row { display: flex; gap: 15px; margin-top: 30px; position: relative; z-index: 210; }
         .c-btn { width: 50px; height: 50px; border-radius: 50%; border: none; font-size: 20px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; }
-        .blue { background: #3498db; }
-        .red { background: #e74c3c; }
-        .green { background: #2ecc71; }
-        video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 26px; z-index: -1; }
+        .blue { background: #3498db; } .red { background: #e74c3c; } .green { background: #2ecc71; }
+        video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 26px; background: #000; }
+
+        /* Error Shake Effect */
+        .invalid-input { border-color: #ff4757 !important; background: #fff1f2; animation: shake 0.3s ease-in-out; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+        #roomErr { color: #ff4757; font-size: 12px; margin-top: 5px; text-align: center; height: 15px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -69,17 +65,19 @@
     <div style="text-align:center; font-size: 24px;">ROOM SETUP</div>
     <button onclick="createRoom()">➕ CREATE NEW ROOM</button>
     <div style="text-align:center; margin: 10px;">OR</div>
-    <input id="inviteInput" placeholder="Enter Invite Code...">
+    <input id="inviteInput" placeholder="Enter Room Code.." oninput="this.classList.remove('invalid-input'); document.getElementById('roomErr').innerText='';">
+    <div id="roomErr"></div>
     <button onclick="joinRoom()" style="background:#4facfe;">🔗 JOIN ROOM</button>
 </div>
 
 <div class="box hidden" id="chatScreen">
     <div id="callOverlay" class="hidden">
         <video id="remoteVideo" autoplay playsinline></video>
-        <h1 id="cAvatar" class="ringing" style="font-size: 80px; margin:0;">🦁</h1>
-        <h2 id="cName">Sujal</h2>
-        <p id="cStatus">Calling...</p>
-        
+        <div id="callUI" style="z-index: 205; position: relative;">
+            <h1 id="cAvatar" class="ringing" style="font-size: 80px; margin:0;">🦁</h1>
+            <h2 id="cName">Sujal</h2>
+            <p id="cStatus">Calling...</p>
+        </div>
         <div id="incBtns" class="call-btn-row hidden">
             <button class="c-btn red" onclick="hangup()">✖</button>
             <button class="c-btn green" onclick="acceptCall()">✔</button>
@@ -95,9 +93,10 @@
         <h3 style="text-align:center;">⚡ GOD MODE ACTIVE</h3>
         <div class="god-grid">
             <button class="god-btn" onclick="tVanish()">👻 VANISH: <span id="vStat">OFF</span></button>
-            <button class="god-btn" onclick="startCall('audio')">📞 AUDIO</button>
-            <button class="god-btn" onclick="startCall('video')">🎥 VIDEO</button>
-            <button class="god-btn" onclick="alert('Saved')">💾 SAVE</button>
+            <button class="god-btn" onclick="startCall('audio')">📞 AUDIO CALL</button>
+            <button class="god-btn" onclick="startCall('video')">🎥 VIDEO CALL</button>
+            <button class="god-btn" onclick="document.getElementById('fInput').click()">📁 SHARE FILE</button>
+            <input type="file" id="fInput" class="hidden" onchange="sendFile(this)">
             <button class="god-btn" style="grid-column: span 2; color:red;" onclick="nuke()">☢️ SELF-DESTRUCT</button>
             <button class="god-btn" style="grid-column: span 2;" onclick="document.getElementById('godMode').classList.add('hidden')">CLOSE</button>
         </div>
@@ -133,79 +132,91 @@
 
 <script>
     let ws, username, emoji="🦁", room, vanish=false, stream, mic=true, cam=true;
+    let pc, candidateQueue = [];
+    const iceCfg = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
     function sel(el, e) { document.querySelectorAll('.char-option').forEach(o=>o.classList.remove('selected')); el.classList.add('selected'); emoji=e; }
     function toRoom() { username=document.getElementById("username").value.trim(); if(username){ document.getElementById("setupScreen").classList.add("hidden"); document.getElementById("roomScreen").classList.remove("hidden"); } }
     function createRoom() { room = Math.random().toString(36).substr(2,6).toUpperCase(); connect(); }
-    function joinRoom() { room = document.getElementById("inviteInput").value.trim().toUpperCase(); connect(); }
+    
+    function joinRoom() { 
+        const inp = document.getElementById("inviteInput");
+        const val = inp.value.trim();
+        if(val.toLowerCase() === "bibr00") { room = "BIBROO_ROOM"; connect(); } 
+        else if(val.length === 6) { room = val.toUpperCase(); connect(); }
+        else {
+            inp.classList.remove("invalid-input"); 
+            void inp.offsetWidth; 
+            inp.classList.add("invalid-input");
+            document.getElementById("roomErr").innerText = "INVALID ROOM CODE!";
+        }
+    }
 
     function connect() {
-       // This detects if the site is https (secure) or http and connects correctly
-    const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
-    ws = new WebSocket(protocol + location.host);
+        const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
+        ws = new WebSocket(protocol + location.host);
         ws.onopen = () => {
             ws.send(JSON.stringify({ type: "join", room, username, avatar: emoji }));
             document.getElementById("roomScreen").classList.add("hidden");
             document.getElementById("chatScreen").classList.remove("hidden");
-            document.getElementById("roomInfo").innerText = "CODE: " + room;
+            document.getElementById("roomInfo").innerText = "CODE: " + (room === "BIBROO_ROOM" ? "BIBROO" : room);
             window.spawnPlayer(emoji);
         };
-        ws.onmessage = (e) => {
+        ws.onmessage = async (e) => {
             const data = JSON.parse(e.data);
             const chat = document.getElementById("messages");
-            if(data.type === "system") {
-                const s = document.createElement("div"); s.className="system-msg"; s.innerText=data.text; chat.appendChild(s);
-            }
-            if(data.type === "message") {
-                const m = data.message;
-                const d = document.createElement("div"); d.className = "msg " + (m.sender === username ? "right" : "");
-                d.innerHTML = `<div class="msg-header"><div class="avatar-circle">${m.avatar}</div><span class="sender-name">${m.sender}</span></div><div>${m.text}</div>`;
-                chat.appendChild(d); if(m.disappear) setTimeout(()=>d.remove(), 10000);
-            }
+
             if(data.type === "call_req" && data.sender !== username) {
                 document.getElementById("callOverlay").classList.remove("hidden");
                 document.getElementById("incBtns").classList.remove("hidden");
                 document.getElementById("actBtns").classList.add("hidden");
                 document.getElementById("cName").innerText = data.sender;
-                document.getElementById("cAvatar").innerText = data.senderAvatar;
+                document.getElementById("cAvatar").innerText = data.senderAvatar || "🦁";
             }
-            if(data.type === "call_acc") {
-                document.getElementById("cStatus").innerText = "Connected";
-                document.getElementById("cAvatar").classList.remove("ringing");
+
+            if(data.type === "message") {
+                const m = data.message;
+                const d = document.createElement("div"); d.className = "msg " + (m.sender === username ? "right" : "");
+                let fileH = m.file ? (m.file.startsWith("data:image") ? `<img src="${m.file}" style="max-width:100%; border-radius:10px; margin-top:8px;">` : "") + `<br><a href="${m.file}" download="${m.fileName}" style="color:#76ba1b; font-size:12px;">📎 Download</a>` : "";
+                d.innerHTML = `<div class="msg-header"><div class="avatar-circle">${m.avatar}</div><span class="sender-name">${m.sender}</span></div><div>${m.text}</div>${fileH}`;
+                chat.appendChild(d);
+                chat.scrollTop = chat.scrollHeight;
+                if(m.disappear) setTimeout(()=>d.remove(), 10000);
             }
-            if(data.type === "hangup") { endCallLogic(); }
+
+            if(data.type === "system") { 
+                const s = document.createElement("div"); 
+                s.className="system-msg"; 
+                s.innerText=data.text; 
+                chat.appendChild(s); 
+                chat.scrollTop = chat.scrollHeight;
+            }
+
+            if(data.sender !== username) {
+                if(data.type === "offer") { if(!pc) initPeer(); await pc.setRemoteDescription(new RTCSessionDescription(data.offer)); while(candidateQueue.length) await pc.addIceCandidate(candidateQueue.shift()); }
+                else if(data.type === "answer") { await pc.setRemoteDescription(new RTCSessionDescription(data.answer)); }
+                else if(data.type === "candidate") { const c = new RTCIceCandidate(data.candidate); if(pc && pc.remoteDescription) await pc.addIceCandidate(c); else candidateQueue.push(c); }
+                else if(data.type === "call_acc") { if(!pc) initPeer(); const o = await pc.createOffer(); await pc.setLocalDescription(o); ws.send(JSON.stringify({ type: "offer", offer: o })); }
+            }
+            if(data.type === "hangup") endCallLogic();
             if(data.type === "wipe_chat") chat.innerHTML = "";
-            chat.scrollTop = chat.scrollHeight;
         };
     }
 
-    async function startCall(type) {
+    async function startCall(t) {
         document.getElementById("godMode").classList.add("hidden");
         document.getElementById("callOverlay").classList.remove("hidden");
         document.getElementById("actBtns").classList.remove("hidden");
-        document.getElementById("incBtns").classList.add("hidden");
-        ws.send(JSON.stringify({ type: "call_req" }));
-        stream = await navigator.mediaDevices.getUserMedia({ audio:true, video:type==='video' });
-        document.getElementById("remoteVideo").srcObject = stream; // Showing local for now
+        stream = await navigator.mediaDevices.getUserMedia({ audio:true, video:t==='video' });
+        initPeer(); ws.send(JSON.stringify({ type: "call_req", callType: t, senderAvatar: emoji }));
     }
-
-    function acceptCall() {
-        ws.send(JSON.stringify({ type: "call_acc" }));
-        document.getElementById("incBtns").classList.add("hidden");
-        document.getElementById("actBtns").classList.remove("hidden");
-        startCall('video');
-    }
-
+    async function acceptCall() { document.getElementById("incBtns").classList.add("hidden"); document.getElementById("actBtns").classList.remove("hidden"); stream = await navigator.mediaDevices.getUserMedia({ audio:true, video:true }); if(!pc) initPeer(); ws.send(JSON.stringify({ type: "call_acc" })); }
+    function initPeer() { pc = new RTCPeerConnection(iceCfg); if(stream) stream.getTracks().forEach(t => pc.addTrack(t, stream)); pc.onicecandidate = e => { if(e.candidate) ws.send(JSON.stringify({ type: "candidate", candidate: e.candidate })); }; pc.ontrack = e => { document.getElementById("remoteVideo").srcObject = e.streams[0]; document.getElementById("callUI").classList.add("hidden"); }; }
     function hangup() { ws.send(JSON.stringify({ type: "hangup" })); endCallLogic(); }
-    function endCallLogic() { if(stream) stream.getTracks().forEach(t=>t.stop()); document.getElementById("callOverlay").classList.add("hidden"); }
-    function toggleMic() { mic=!mic; stream.getAudioTracks()[0].enabled=mic; document.getElementById("mBtn").style.background=mic?'#3498db':'#7f8c8d'; }
-    function toggleCam() { cam=!cam; if(stream.getVideoTracks()[0]) stream.getVideoTracks()[0].enabled=cam; document.getElementById("vBtn").style.background=cam?'#3498db':'#7f8c8d'; }
-
-    function send() {
-        const i = document.getElementById("text");
-        if(i.value === "/bibr") { document.getElementById("godMode").classList.remove("hidden"); i.value=""; return; }
-        if(i.value.trim()){ ws.send(JSON.stringify({type:"message", text:i.value, disappear:vanish})); i.value=""; }
-    }
+    function endCallLogic() { if(pc) pc.close(); pc = null; if(stream) stream.getTracks().forEach(t=>t.stop()); document.getElementById("callOverlay").classList.add("hidden"); document.getElementById("callUI").classList.remove("hidden"); }
+    function send() { const i = document.getElementById("text"); if(i.value === "/bibr") { document.getElementById("godMode").classList.remove("hidden"); i.value=""; return; } if(i.value.trim()){ ws.send(JSON.stringify({type:"message", text:i.value, disappear:vanish})); i.value=""; } }
+    function toggleMic() { mic=!mic; if(stream) stream.getAudioTracks()[0].enabled=mic; }
+    function toggleCam() { cam=!cam; if(stream && stream.getVideoTracks()[0]) stream.getVideoTracks()[0].enabled=cam; }
     function tVanish() { vanish=!vanish; document.getElementById("vStat").innerText=vanish?"ON":"OFF"; }
     function nuke() { ws.send(JSON.stringify({type:"self_destruct"})); }
     document.getElementById("text").addEventListener("keypress", (e)=>{if(e.key==="Enter")send();});
