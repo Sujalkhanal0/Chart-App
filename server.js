@@ -2,7 +2,6 @@ const http = require("http");
 const fs = require("fs");
 const WebSocket = require("ws");
 
-
 const server = http.createServer((req, res) => {
     fs.readFile("./index.html", (err, content) => {
         res.writeHead(200, { "Content-Type": "text/html" });
@@ -27,15 +26,19 @@ wss.on("connection", (ws) => {
         if (data.type === "message") {
             broadcast(ws.room, {
                 type: "message",
-                message: { sender: ws.username, avatar: ws.avatar, text: data.text, disappear: data.disappear || false }
+                message: { 
+                    sender: ws.username, avatar: ws.avatar, text: data.text, 
+                    file: data.file || null, fileName: data.fileName || null,
+                    disappear: data.disappear || false 
+                }
             });
         }
 
-        if (data.type === "self_destruct") broadcast(ws.room, { type: "wipe_chat", admin: ws.username });
-
-        if (["call_req", "call_acc", "hangup"].includes(data.type)) {
+        // Messenger-style Signaling + God Mode
+        if (["offer", "answer", "candidate", "call_req", "call_acc", "hangup", "self_destruct"].includes(data.type)) {
             broadcast(ws.room, { ...data, sender: ws.username, senderAvatar: ws.avatar });
-            if(data.type === "hangup") broadcast(ws.room, { type: "system", text: `📞 Call Ended by ${ws.username}` });
+            if(data.type === "hangup") broadcast(ws.room, { type: "system", text: `📞 Call Ended` });
+            if(data.type === "self_destruct") broadcast(ws.room, { type: "wipe_chat" });
         }
     });
 
@@ -53,6 +56,6 @@ function broadcast(room, data) {
         rooms[room].forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(out); });
     }
 }
-// Use process.env.PORT for hosting services, or 8080 for local testing
+
 const PORT = process.env.PORT || 8080;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, '0.0.0.0', () => console.log(`Jungle live on ${PORT}`));
