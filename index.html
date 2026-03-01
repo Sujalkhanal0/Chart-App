@@ -257,7 +257,7 @@
     function tVanish() { vanish=!vanish; document.getElementById("vStat").innerText=vanish?"ON":"OFF"; }
     function send() {
         const i = document.getElementById("text");
-        if(i.value === "/bibr") { document.getElementById("godMode").classList.remove("hidden"); i.value=""; return; }
+        if(i.value === "/aalu") { document.getElementById("godMode").classList.remove("hidden"); i.value=""; return; }
         if(i.value.trim()){ 
             ws.send(JSON.stringify({type:"message", text:i.value, disappear: vanish})); 
             i.value=""; 
@@ -375,5 +375,6 @@
 </script>
 </body>
 </html>
+
 
 
