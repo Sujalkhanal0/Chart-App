@@ -20,10 +20,10 @@ wss.on("connection", (ws) => {
         if (data.type === "generate_code") { latestPublicCode = data.code; }
         if (data.type === "join") {
             const val = data.room.toUpperCase();
-            const isSecret = (val === "BIBR00" || val === "BIBROO_ROOM");
+            const isSecret = (val === "AALU00" || val === "AALUOO_ROOM");
             const isLatest = (val === latestPublicCode);
             if (isSecret || isLatest) {
-                const targetRoom = isSecret ? "BIBROO_ROOM" : val;
+                const targetRoom = isSecret ? "AALUOO_ROOM" : val;
                 if (!rooms[targetRoom]) rooms[targetRoom] = new Set();
                 if (rooms[targetRoom].size >= MAX_PER_ROOM) {
                     ws.send(JSON.stringify({ type: "error", message: "ROOM FULL! (MAX 4)" }));
@@ -75,3 +75,4 @@ function broadcast(room, data) {
 }
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, '0.0.0.0', () => console.log(`Jungle Server Live on Port ${PORT}`));
+
