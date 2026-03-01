@@ -16,8 +16,8 @@
         .selected { background: #FFD93D; border: 3px solid #000; }
         input, button { border: 3px solid #2d5a27; padding: 12px; border-radius: 12px; font-family: inherit; font-size: 16px; outline: none; }
         button { background: #76ba1b; color: white; cursor: pointer; }
-        .chat { flex: 1; overflow-y: auto; margin: 15px 0; display: flex; flex-direction: column; gap: 12px; scrollbar-width: none; position: relative; }
-        .msg { max-width: 80%; padding: 10px 15px; border-radius: 18px; border: 2px solid #2d5a27; background: #fff; position: relative; word-wrap: break-word; transition: opacity 0.6s, transform 0.6s; }
+        .chat { flex: 1; overflow-y: auto; margin: 15px 0; display: flex; flex-direction: column; gap: 12px; scrollbar-width: none; position: relative; scroll-behavior: smooth; }
+        .msg { max-width: 80%; padding: 10px 15px; border-radius: 18px; border: 2px solid #2d5a27; background: #fff; position: relative; word-wrap: break-word; transition: opacity 0.6s, transform 0.6s; user-select: none; -webkit-touch-callout: none; }
         .vanish { opacity: 0; transform: translateY(-20px) scale(0.9); pointer-events: none; }
         .msg-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
         .avatar-circle { background: #FFD93D; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 14px; border: 1px solid #000; }
@@ -51,6 +51,15 @@
         .invalid-input { border-color: #ff4757 !important; background: #fff1f2; animation: shake 0.3s ease-in-out; }
         @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
         #roomErr { color: #ff4757; font-size: 12px; margin-top: 5px; text-align: center; height: 15px; font-weight: bold; }
+
+        /* --- NEW FEATURE STYLES --- */
+        .time-divider { align-self: center; font-size: 10px; color: #2d5a27; background: rgba(0,0,0,0.08); padding: 2px 12px; border-radius: 10px; margin: 10px 0; font-family: sans-serif; }
+        .reply-preview-box { font-size: 10px; background: rgba(0,0,0,0.05); padding: 5px; border-radius: 8px; border-left: 3px solid #76ba1b; margin-bottom: 5px; cursor: pointer; }
+        #replyBar { background: #f0f0f0; padding: 8px; border-radius: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; font-size: 11px; border-left: 5px solid #76ba1b; }
+        #actionMenu { position: fixed; background: white; border: 3px solid #2d5a27; border-radius: 15px; display: none; z-index: 2000; box-shadow: 5px 5px 0px #1e3d1a; flex-direction: column; min-width: 120px; overflow: hidden; }
+        .menu-item { padding: 12px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #eee; text-align: center; transition: 0.2s; }
+        .menu-item:hover { background: #76ba1b; color: white; }
+        .highlight-msg { background: #fff59d !important; border-color: #f1c40f !important; transition: 0.3s; }
     </style>
 </head>
 <body>
@@ -122,10 +131,22 @@
     <div id="roomInfo" class="system-msg" style="margin-bottom: 5px; font-weight: bold;">Code: —</div>
     <div class="chat" id="messages"></div>
     <div id="typingBox"></div>
+
+    <div id="replyBar" class="hidden">
+        <span id="replyPreviewText">Replying...</span>
+        <i class="fas fa-times" onclick="cancelReply()" style="cursor:pointer; color:red;"></i>
+    </div>
+
     <div style="display:flex; gap:8px;">
         <input id="text" placeholder="Messages..." style="flex:1;">
         <button onclick="send()">SEND</button>
     </div>
+</div>
+
+<div id="actionMenu">
+    <div class="menu-item" id="menuReply">Reply</div>
+    <div class="menu-item" id="menuEdit">Edit</div>
+    <div class="menu-item" onclick="closeMenu()" style="color:red;">Cancel</div>
 </div>
 
 <script type="module">
@@ -151,6 +172,8 @@
 <script>
     let ws, username, emoji="🦁", room, vanish=false, stream, mic=true, cam=true, pc, camMode="user";
     let startTime, timerInterval;
+    let lastMsgTime = null; 
+    let holdTimer, replyingTo = null; 
     const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
     ws = new WebSocket(protocol + location.host);
     const iceCfg = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
@@ -169,6 +192,13 @@
     function minimizeCall() { document.getElementById("callOverlay").classList.add("hidden"); document.getElementById("restoreCall").classList.remove("hidden"); }
     function maximizeCall() { document.getElementById("callOverlay").classList.remove("hidden"); document.getElementById("restoreCall").classList.add("hidden"); }
 
+    function closeMenu() { document.getElementById("actionMenu").style.display = "none"; }
+    function cancelReply() { replyingTo = null; document.getElementById("replyBar").classList.add("hidden"); }
+    function jumpTo(id) {
+        const el = document.getElementById(id);
+        if(el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('highlight-msg'); setTimeout(()=>el.classList.remove('highlight-msg'), 2000); }
+    }
+
     ws.onmessage = async (e) => {
         const data = JSON.parse(e.data);
         const chat = document.getElementById("messages");
@@ -177,7 +207,7 @@
             room = data.room;
             document.getElementById("roomScreen").classList.add("hidden");
             document.getElementById("chatScreen").classList.remove("hidden");
-            document.getElementById("roomInfo").innerText = "CODE: " + (room === "BIBROO_ROOM" ? "BIBR00" : room);
+            document.getElementById("roomInfo").innerText = "CODE: " + (room === "AALU00_ROOM" ? "AALU00" : room);
             window.spawnPlayer(emoji);
         }
         if (data.type === "error") {
@@ -188,13 +218,82 @@
         if (data.type === "message") {
             const m = data.message;
             if (m.sender !== username) msgSfx.play().catch(()=>{});
-            const d = document.createElement("div"); d.className = "msg " + (m.sender === username ? "right" : "");
+
+            const msgDate = new Date(m.fullTime || Date.now());
+            if (!lastMsgTime || (msgDate - lastMsgTime) > 600000) { 
+                const div = document.createElement("div");
+                div.className = "time-divider";
+                div.innerText = m.timestamp || msgDate.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                chat.appendChild(div);
+            }
+            lastMsgTime = msgDate;
+
+            const d = document.createElement("div"); 
+            const isMe = (m.sender === username);
+            d.className = "msg " + (isMe ? "right" : "");
+            d.id = m.id || "m-" + Date.now();
+
+            // --- NEW SWIPE TO REPLY LOGIC ---
+            let touchStartX = 0;
+            d.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; }, {passive: true});
+            d.addEventListener('touchend', (e) => {
+                let touchEndX = e.changedTouches[0].clientX;
+                let diff = touchEndX - touchStartX;
+                // Friend msg: Left-to-Right (>50) | My msg: Right-to-Left (<-50)
+                if ((!isMe && diff > 50) || (isMe && diff < -50)) {
+                    replyingTo = {id: d.id, text: m.text}; 
+                    document.getElementById("replyPreviewText").innerText = "Replying to: " + m.text.substring(0,15); 
+                    document.getElementById("replyBar").classList.remove("hidden");
+                    d.style.transform = isMe ? "translateX(-15px)" : "translateX(15px)";
+                    setTimeout(() => d.style.transform = "translateX(0)", 150);
+                }
+            }, {passive: true});
+
+            // --- HOLD DETECTION (MOBILE & ROOM FIX) ---
+            d.onpointerdown = (ev) => { 
+                holdTimer = setTimeout(() => {
+                    const menu = document.getElementById("actionMenu");
+                    menu.style.display = "flex"; 
+                    let x = ev.clientX;
+                    let y = ev.clientY;
+                    if (x + 130 > window.innerWidth) x = window.innerWidth - 140;
+                    menu.style.top = y + "px"; 
+                    menu.style.left = x + "px";
+
+                    document.getElementById("menuReply").onclick = () => { 
+                        replyingTo = {id: d.id, text: m.text}; 
+                        document.getElementById("replyPreviewText").innerText = "Replying to: " + m.text.substring(0,15); 
+                        document.getElementById("replyBar").classList.remove("hidden"); 
+                        closeMenu(); 
+                    };
+                    
+                    const eBtn = document.getElementById("menuEdit");
+                    if(isMe && (room === "AALU00_ROOM" || room === "AALU00")) { 
+                        eBtn.style.display="block"; 
+                        eBtn.onclick = () => { 
+                            const n = prompt("Edit message:", m.text); 
+                            if(n && n !== m.text) ws.send(JSON.stringify({type:"edit_message", id: d.id, newText: n})); 
+                            closeMenu(); 
+                        }; 
+                    } else { eBtn.style.display="none"; }
+                }, 600); 
+            };
+            d.onpointerup = () => clearTimeout(holdTimer);
+            d.onpointerleave = () => clearTimeout(holdTimer);
+
+            let replyHtml = m.replyTo ? `<div class="reply-preview-box" onclick="jumpTo('${m.replyTo.id}')">⤴️ ${m.replyTo.text.substring(0,20)}...</div>` : "";
             let fileH = m.file ? (m.file.startsWith("data:image") ? `<img src="${m.file}" style="max-width:100%; border-radius:10px; margin-top:8px;">` : "") + `<br><a href="${m.file}" download="${m.fileName}" style="color:#76ba1b; font-size:12px;">📎 Download</a>` : "";
-            d.innerHTML = `<div class="msg-header"><div class="avatar-circle">${m.avatar}</div><span class="sender-name">${m.sender}</span></div><div>${m.text}</div>${fileH}`;
+            
+            d.innerHTML = `${replyHtml}<div class="msg-header"><div class="avatar-circle">${m.avatar}</div><span class="sender-name">${m.sender}</span></div><div class="msg-body">${m.text}${m.edited?'<small> (edited)</small>':''}</div>${fileH}`;
             chat.appendChild(d); chat.scrollTop = chat.scrollHeight;
+            
             if (m.disappear) {
                 setTimeout(() => { d.classList.add('vanish'); setTimeout(() => d.remove(), 600); }, 10000);
             }
+        }
+        if (data.type === "edit_update") {
+            const el = document.querySelector(`#${data.id} .msg-body`);
+            if(el) el.innerHTML = data.newText + '<small> (edited)</small>';
         }
         if (data.type === "typing" && data.sender !== username) {
             const tBox = document.getElementById("typingBox");
@@ -259,8 +358,18 @@
         const i = document.getElementById("text");
         if(i.value === "/aalu") { document.getElementById("godMode").classList.remove("hidden"); i.value=""; return; }
         if(i.value.trim()){ 
-            ws.send(JSON.stringify({type:"message", text:i.value, disappear: vanish})); 
+            const now = new Date();
+            ws.send(JSON.stringify({
+                type:"message", 
+                text:i.value, 
+                disappear: vanish, 
+                id: "m-"+Date.now(),
+                timestamp: now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+                fullTime: now.toISOString(),
+                replyTo: replyingTo
+            })); 
             i.value=""; 
+            cancelReply();
             ws.send(JSON.stringify({ type: "typing", isTyping: false, avatar: emoji }));
         }
     }
@@ -268,7 +377,7 @@
         const file = el.files[0]; if(!file) return;
         const reader = new FileReader();
         reader.onload = () => {
-            ws.send(JSON.stringify({ type: "message", text: `Sent a file: ${file.name}`, file: reader.result, fileName: file.name, disappear: vanish }));
+            ws.send(JSON.stringify({ type: "message", text: `Sent a file: ${file.name}`, file: reader.result, fileName: file.name, disappear: vanish, fullTime: new Date().toISOString() }));
         };
         reader.readAsDataURL(file);
     }
@@ -291,11 +400,9 @@
         document.getElementById("actBtns").classList.remove("hidden");
         document.getElementById("incBtns").classList.add("hidden");
         document.getElementById("cStatus").innerText = "Calling...";
-        
         stream = await navigator.mediaDevices.getUserMedia({ audio:true, video: t==='video' });
         document.getElementById("localVideo").srcObject = stream;
         document.getElementById("localVideo").classList.remove("hidden");
-        
         initPeer();
         ws.send(JSON.stringify({ type: "call_req", callType: t, senderAvatar: emoji }));
     }
@@ -304,11 +411,9 @@
         ringSfx.pause(); ringSfx.currentTime = 0;
         document.getElementById("incBtns").classList.add("hidden"); 
         document.getElementById("actBtns").classList.remove("hidden"); 
-        
         stream = await navigator.mediaDevices.getUserMedia({ audio:true, video:true }); 
         document.getElementById("localVideo").srcObject = stream;
         document.getElementById("localVideo").classList.remove("hidden");
-        
         if(!pc) initPeer(); 
         ws.send(JSON.stringify({ type: "call_acc" })); 
         startTimer();
@@ -372,12 +477,8 @@
 
     function nuke() { ws.send(JSON.stringify({type:"self_destruct"})); }
     document.getElementById("text").addEventListener("keypress", (e)=>{if(e.key==="Enter")send();});
+    
+    window.addEventListener('click', (e) => { if(!e.target.closest('.msg')) closeMenu(); });
 </script>
 </body>
 </html>
-
-
-
-
-
-
