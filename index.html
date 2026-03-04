@@ -60,6 +60,10 @@
         .menu-item { padding: 12px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #eee; text-align: center; transition: 0.2s; }
         .menu-item:hover { background: #76ba1b; color: white; }
         .highlight-msg { background: #fff59d !important; border-color: #f1c40f !important; transition: 0.3s; }
+        
+        /* Media Preview Styles */
+        .media-preview { margin-top: 8px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(0,0,0,0.1); display: block; max-width: 100%; }
+        .media-preview img, .media-preview video { width: 100%; display: block; }
     </style>
 </head>
 <body>
@@ -239,7 +243,6 @@
             d.addEventListener('touchend', (e) => {
                 let touchEndX = e.changedTouches[0].clientX;
                 let diff = touchEndX - touchStartX;
-                // Friend msg: Left-to-Right (>50) | My msg: Right-to-Left (<-50)
                 if ((!isMe && diff > 50) || (isMe && diff < -50)) {
                     replyingTo = {id: d.id, text: m.text}; 
                     document.getElementById("replyPreviewText").innerText = "Replying to: " + m.text.substring(0,15); 
@@ -249,7 +252,7 @@
                 }
             }, {passive: true});
 
-            // --- HOLD DETECTION (MOBILE & ROOM FIX) ---
+            // --- HOLD DETECTION ---
             d.onpointerdown = (ev) => { 
                 holdTimer = setTimeout(() => {
                     const menu = document.getElementById("actionMenu");
@@ -281,10 +284,22 @@
             d.onpointerup = () => clearTimeout(holdTimer);
             d.onpointerleave = () => clearTimeout(holdTimer);
 
+            // --- MEDIA PREVIEW LOGIC ---
+            let mediaHtml = "";
+            const lowerText = m.text.toLowerCase().trim();
+            const isImg = /\.(jpeg|jpg|gif|png|webp)$/.test(lowerText);
+            const isVid = /\.(mp4|webm|ogg)$/.test(lowerText);
+
+            if (isImg) {
+                mediaHtml = `<div class="media-preview"><img src="${m.text}" loading="lazy"></div>`;
+            } else if (isVid) {
+                mediaHtml = `<div class="media-preview"><video src="${m.text}" controls></video></div>`;
+            }
+
             let replyHtml = m.replyTo ? `<div class="reply-preview-box" onclick="jumpTo('${m.replyTo.id}')">⤴️ ${m.replyTo.text.substring(0,20)}...</div>` : "";
             let fileH = m.file ? (m.file.startsWith("data:image") ? `<img src="${m.file}" style="max-width:100%; border-radius:10px; margin-top:8px;">` : "") + `<br><a href="${m.file}" download="${m.fileName}" style="color:#76ba1b; font-size:12px;">📎 Download</a>` : "";
             
-            d.innerHTML = `${replyHtml}<div class="msg-header"><div class="avatar-circle">${m.avatar}</div><span class="sender-name">${m.sender}</span></div><div class="msg-body">${m.text}${m.edited?'<small> (edited)</small>':''}</div>${fileH}`;
+            d.innerHTML = `${replyHtml}<div class="msg-header"><div class="avatar-circle">${m.avatar}</div><span class="sender-name">${m.sender}</span></div><div class="msg-body">${m.text}${m.edited?'<small> (edited)</small>':''}</div>${mediaHtml}${fileH}`;
             chat.appendChild(d); chat.scrollTop = chat.scrollHeight;
             
             if (m.disappear) {
